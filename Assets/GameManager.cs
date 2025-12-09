@@ -84,7 +84,7 @@ public class GameManager : MonoBehaviour
             AdvanceTurn();
     }
 
-    private bool CanFigureMove(Figure fig, int dice)
+    public bool CanFigureMove(Figure fig, int dice)
     {
         if (fig == null || fig.currentField == null) return false;
 
@@ -286,7 +286,7 @@ public class GameManager : MonoBehaviour
         Debug.Log($"🔄 Következő játékos: {currentTurn}");
     }
 
-    private void CheckWinner(Figure.TeamColor color)
+    public void CheckWinner(Figure.TeamColor color)
     {
         // Ellenőrizzük, hogy legalább 2 bábu a finish mezőn
         int count = 0;
