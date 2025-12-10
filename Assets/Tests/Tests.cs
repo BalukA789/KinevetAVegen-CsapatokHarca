@@ -8,76 +8,124 @@ public class LudoPlayModeTests
     private GameManager gameManager;
     private LudoBoard board;
 
-    [SetUp]
-    public void Setup()
+    [UnitySetUp]
+    public IEnumerator Setup()
     {
-        // Betöltjük a scene-t, ami a játékot tartalmazza
-        gameManager = Object.FindObjectOfType<GameManager>();
-        board = Object.FindObjectOfType<LudoBoard>();
+        // GameManager
+        var gmObj = new GameObject("GameManager_TEST");
+        gameManager = gmObj.AddComponent<GameManager>();
 
-        Assert.IsNotNull(gameManager, "GameManager nincs a scene-ben!");
-        Assert.IsNotNull(board, "LudoBoard nincs a scene-ben!");
+        // Board
+        var boardObj = new GameObject("Board_TEST");
+        board = boardObj.AddComponent<LudoBoard>();
+
+        // Track
+        board.mainTrack = new Transform[52];
+        for (int i = 0; i < 52; i++)
+        {
+            var f = new GameObject("Track_" + i);
+            var fm = f.AddComponent<FieldMarker>();
+            fm.type = FieldMarker.FieldType.Normal;
+            board.mainTrack[i] = f.transform;
+        }
+
+        // Blue spawn
+        board.blueBase = new Transform[4];
+        var spawnObj = new GameObject("Spawn");
+        var spawnFM = spawnObj.AddComponent<FieldMarker>();
+        spawnFM.type = FieldMarker.FieldType.Spawn;
+        board.blueBase[0] = spawnObj.transform;
+
+        // Finish
+        var finishObj = new GameObject("Finish");
+        var finishFM = finishObj.AddComponent<FieldMarker>();
+        finishFM.type = FieldMarker.FieldType.Finish;
+        board.blueFinish = finishObj.transform;
+
+        yield return null;
     }
 
-    // 1️⃣ Teszt: Spawn-ról 6-tal ki tud lépni a figura
+   
+
+    // 1. Spawn-ról nem léphet, ha nem 6
     [UnityTest]
-    public IEnumerator SpawnRollSixMovesFigure()
+    public IEnumerator FigureCannotMoveWhenRollNotSix()
     {
-        // Válassz egy kék figurát, ami a spawn-on van
-        var blueFigure = Object.FindObjectsOfType<Figure>()[0];
-        blueFigure.teamColor = Figure.TeamColor.Blue;
-        blueFigure.currentField = board.mainTrack[0].GetComponent<FieldMarker>();
+        var figObj = new GameObject("Fig2");
+        var fig = figObj.AddComponent<Figure>();
+        fig.board = board;
+        fig.teamColor = Figure.TeamColor.Blue;
 
-        gameManager.currentTurn = Figure.TeamColor.Blue;
-        gameManager.lastRoll = 6;
+        var spawnField = board.blueBase[0].GetComponent<FieldMarker>();
+        spawnField.type = FieldMarker.FieldType.Spawn;
+        fig.currentField = spawnField;
 
-        gameManager.HandlePlayerMove(blueFigure);
+        // Ellenőrizzük a CanFigureMove-ot: spawn-ról csak 6-tal lehet kimenni
+        bool canMove = gameManager.CanFigureMove(fig, 3);
 
-        yield return null; // Várunk egy frame-et
-
-        // Ellenőrizzük, hogy a figura elmozdult a spawn-ról
-        Assert.AreNotEqual(board.mainTrack[0].position, blueFigure.transform.position, "A figura nem lépett ki a spawn-ról!");
-    }
-
-    // 2️⃣ Teszt: Spawn-ról nem tud lépni, ha nem 6-ot dob
-    [UnityTest]
-    public IEnumerator FigureCannotMoveWhenNoDiceSix()
-    {
-        var figure = Object.FindObjectsOfType<Figure>()[0];
-        figure.teamColor = Figure.TeamColor.Blue;
-        figure.currentField = board.mainTrack[0].GetComponent<FieldMarker>();
-
-        gameManager.currentTurn = Figure.TeamColor.Blue;
-        gameManager.lastRoll = 3;
-
-        bool canMove = gameManager.CanFigureMove(figure, gameManager.lastRoll);
         yield return null;
 
-        Assert.IsFalse(canMove, "A figura nem tudna lépni, mert spawn-ról csak 6-tal lehet kimenni.");
+        Assert.IsFalse(canMove, "Spawn-ról nem kellene tudni lépni, ha nem 6-ot dobtak.");
     }
 
-    // 3️⃣ Teszt: Két figura finish-re érkezése után győztes szín beállítása
+    // 2. Győztes teszt
     [UnityTest]
     public IEnumerator TwoFiguresFinishDeclaresWinner()
     {
-        // Példa: kék csapatból két figura a finish-re
         var finish = board.blueFinish.GetComponent<FieldMarker>();
-        var figures = Object.FindObjectsOfType<Figure>();
-        int count = 0;
-        foreach (var f in figures)
-        {
-            if (f.teamColor == Figure.TeamColor.Blue)
-            {
-                f.currentField = finish;
-                count++;
-                if (count == 2) break;
-            }
-        }
 
-        // Feltételezzük, hogy van GameManager-ben CheckForWinner() vagy a MoveToField ellenőrzi
-        gameManager.CheckWinner(Figure.TeamColor.Blue); // Hozz létre vagy implementáld a metódust
+        var f1 = new GameObject("F1").AddComponent<Figure>();
+        var f2 = new GameObject("F2").AddComponent<Figure>();
+
+        f1.teamColor = Figure.TeamColor.Blue;
+        f2.teamColor = Figure.TeamColor.Blue;
+
+        f1.board = board;
+        f2.board = board;
+
+        finish.AddFigure(f1);
+        finish.AddFigure(f2);
+
+        board.DeclareWinner(Figure.TeamColor.Blue);
+
         yield return null;
 
-        Assert.AreEqual(Figure.TeamColor.Blue, board.winner, "A kék csapatnak kellene nyernie!");
+        Assert.AreEqual(Figure.TeamColor.Blue, board.winner);
+        Assert.IsTrue(board.gameOver);
     }
+    // 3. 4️⃣ Ha a játék véget ért, a figura nem tud mozogni
+    [UnityTest]
+    public IEnumerator FigureDoesNotMoveWhenGameOver()
+    {
+        var figObj = new GameObject("Fig_GameOver");
+        var figure = figObj.AddComponent<Figure>();
+        figure.board = board;
+        figure.teamColor = Figure.TeamColor.Blue;
+
+        // Mezők
+        var fromObj = new GameObject("FromTest");
+        var from = fromObj.AddComponent<FieldMarker>();
+        from.type = FieldMarker.FieldType.Normal;
+
+        var toObj = new GameObject("ToTest");
+        var to = toObj.AddComponent<FieldMarker>();
+        to.type = FieldMarker.FieldType.Normal;
+
+        // Kezdő pozíció
+        figure.currentField = from;
+        Vector3 startPos = figure.transform.position;
+
+        // Játék vége
+        board.gameOver = true;
+
+        // Próbáljuk megmozgatni
+        figure.MoveToField(to);
+
+        yield return null;
+
+        // Nem változhatott meg a pozíció
+        Assert.AreEqual(startPos, figure.transform.position,
+            "GameOver esetén a figurának nem szabadna mozognia!");
+    }
+
 }

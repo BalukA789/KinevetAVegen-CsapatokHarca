@@ -16,7 +16,7 @@ public class Figure : MonoBehaviour
         if (board.gameOver) return; // Ha vége a játéknak, ne lépjen
 
         bool isProtected = newField.type == FieldMarker.FieldType.Protected;
-        bool isBase = newField.type == FieldMarker.FieldType.Spawn;
+        bool isBase = newField.type == FieldMarker.FieldType.Base;
 
         bool doOffset = false;
 
@@ -111,6 +111,7 @@ public class Figure : MonoBehaviour
                 if (i == 2) pos.x += offset;
             }
 
+            pos.z = -1;
             fig.transform.position = pos;
         }
     }

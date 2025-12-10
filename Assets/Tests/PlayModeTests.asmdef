@@ -3,9 +3,12 @@
     "rootNamespace": "",
     "references": [
         "MainGame",
+        "Unity.InputSystem.TestFramework",
         "UnityEngine.TestRunner"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
